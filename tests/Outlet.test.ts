@@ -210,4 +210,57 @@ describe('OutletAccessory', () => {
       expect(service.addOptionalCharacteristic).not.toHaveBeenCalledWith(EnergyCharacteristics.Volts)
     })
   })
+
+  describe('outlet in use', () => {
+    it('reports in use while the outlet is drawing power', () => {
+      const { outlet, accessory, Service, Characteristic } = createOutlet({ wattsId: '19', wattsDivisor: '10' })
+
+      outlet._registerPlatformAccessory()
+      outlet._registerCharacteristics({ '1': true, '19': 7700 })
+
+      const service = accessory.getService(Service.Outlet)
+      expect(service!.getCharacteristic(Characteristic.OutletInUse).value).toBe(true)
+    })
+
+    it('reports not in use when power is zero', () => {
+      const { outlet, accessory, Service, Characteristic } = createOutlet({ wattsId: '19', wattsDivisor: '10' })
+
+      outlet._registerPlatformAccessory()
+      outlet._registerCharacteristics({ '1': true, '19': 0 })
+
+      const service = accessory.getService(Service.Outlet)
+      expect(service!.getCharacteristic(Characteristic.OutletInUse).value).toBe(false)
+    })
+
+    it('updates in-use when power changes', () => {
+      const { outlet, device, accessory, Service, Characteristic } = createOutlet({
+        wattsId: '19',
+        wattsDivisor: '10',
+      })
+
+      outlet._registerPlatformAccessory()
+      outlet._registerCharacteristics({ '1': true, '19': 0 })
+
+      const service = accessory.getService(Service.Outlet)
+      const char = service!.getCharacteristic(Characteristic.OutletInUse)
+      const updateSpy = vi.spyOn(char, 'updateValue')
+
+      device.state = { '1': true, '19': 4200 }
+      device.emit('change', { '19': 4200 })
+
+      expect(updateSpy).toHaveBeenCalledWith(true)
+    })
+
+    it('removes the in-use characteristic when watts is not configured', () => {
+      const { outlet, accessory, Service, Characteristic } = createOutlet()
+
+      outlet._registerPlatformAccessory()
+      const service = accessory.getService(Service.Outlet)
+      const removeSpy = vi.spyOn(outlet, '_removeCharacteristic')
+
+      outlet._registerCharacteristics({ '1': true })
+
+      expect(removeSpy).toHaveBeenCalledWith(service, Characteristic.OutletInUse)
+    })
+  })
 })

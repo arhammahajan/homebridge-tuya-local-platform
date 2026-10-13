@@ -1,5 +1,5 @@
 import BaseAccessory from './Base.accessory'
-import type { DPSState } from '../types'
+import type { DPSState, HomebridgeCallback } from '../types'
 
 class OutletAccessory extends BaseAccessory {
   static getCategory(Categories: any): number {
@@ -63,6 +63,17 @@ class OutletAccessory extends BaseAccessory {
         .on('get', this.getDividedState.bind(this, energyKeys.watts, energyKeys.wattsDivisor))
     } else this._removeCharacteristic(service, EnergyCharacteristics.Watts)
 
+    let characteristicOutletInUse: any
+    if (energyKeys.watts) {
+      // HomeKit's own "in use" flag: an outlet is in use while it is actually
+      // drawing power. Apple's Home app renders this, unlike the Eve energy
+      // characteristics above, which it ignores.
+      characteristicOutletInUse = service
+        .getCharacteristic(Characteristic.OutletInUse)
+        .updateValue(this._isInUse(dps[energyKeys.watts as string], energyKeys.wattsDivisor))
+        .on('get', this.getOutletInUse.bind(this, energyKeys.watts, energyKeys.wattsDivisor))
+    } else this._removeCharacteristic(service, Characteristic.OutletInUse)
+
     const characteristicOn = service
       .getCharacteristic(Characteristic.On)
       .updateValue(dps[this.dpPower])
@@ -87,7 +98,23 @@ class OutletAccessory extends BaseAccessory {
         const newWatts = this._getDividedState(changes[energyKeys.watts as string], energyKeys.wattsDivisor)
         if (characteristicWatts.value !== newWatts) characteristicWatts.updateValue(newWatts)
       }
+
+      if (changes.hasOwnProperty(energyKeys.watts as string) && characteristicOutletInUse) {
+        const inUse = this._isInUse(changes[energyKeys.watts as string], energyKeys.wattsDivisor)
+        if (characteristicOutletInUse.value !== inUse) characteristicOutletInUse.updateValue(inUse)
+      }
     })
+  }
+
+  getOutletInUse(dp: string, divisor: number, callback: HomebridgeCallback): void {
+    this.getDividedState(dp, divisor, (err: Error | null, value) => {
+      if (err) return callback(err)
+      callback(null, (value as number) > 0)
+    })
+  }
+
+  _isInUse(dp: number | string, divisor: number): boolean {
+    return this._getDividedState(dp, divisor) > 0
   }
 }
 

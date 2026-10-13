@@ -36,6 +36,7 @@ export function createMockCharacteristic() {
     RotationSpeed: 'rotation-speed',
     SwingMode: { UUID: 'swing-uuid' },
     WaterLevel: 'water-level',
+    OutletInUse: 'outlet-in-use',
   }
 }
 
