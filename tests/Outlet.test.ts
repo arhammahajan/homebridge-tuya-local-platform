@@ -181,5 +181,33 @@ describe('OutletAccessory', () => {
       expect(service!.getCharacteristic(EnergyCharacteristics.Amperes).value).toBe(5) // default: 1000
       expect(service!.getCharacteristic(EnergyCharacteristics.Watts).value).toBe(1200) // default: 10
     })
+
+    it('declares each energy characteristic as optional before registering it', () => {
+      const { outlet, accessory, Service, EnergyCharacteristics } = createOutlet({
+        voltsId: '20',
+        ampsId: '18',
+        wattsId: '19',
+      })
+
+      outlet._registerPlatformAccessory()
+      outlet._registerCharacteristics({ '1': true, '18': 5000, '19': 12000, '20': 2400 })
+
+      const service = accessory.getService(Service.Outlet)
+
+      expect(service.addOptionalCharacteristic).toHaveBeenCalledWith(EnergyCharacteristics.Volts)
+      expect(service.addOptionalCharacteristic).toHaveBeenCalledWith(EnergyCharacteristics.Amperes)
+      expect(service.addOptionalCharacteristic).toHaveBeenCalledWith(EnergyCharacteristics.Watts)
+    })
+
+    it('does not declare energy characteristics that are not configured', () => {
+      const { outlet, accessory, Service, EnergyCharacteristics } = createOutlet()
+
+      outlet._registerPlatformAccessory()
+      outlet._registerCharacteristics({ '1': true })
+
+      const service = accessory.getService(Service.Outlet)
+
+      expect(service.addOptionalCharacteristic).not.toHaveBeenCalledWith(EnergyCharacteristics.Volts)
+    })
   })
 })

@@ -38,6 +38,7 @@ class OutletAccessory extends BaseAccessory {
 
     let characteristicVolts: any
     if (energyKeys.volts) {
+      service.addOptionalCharacteristic(EnergyCharacteristics.Volts)
       characteristicVolts = service
         .getCharacteristic(EnergyCharacteristics.Volts)
         .updateValue(this._getDividedState(dps[energyKeys.volts as string], energyKeys.voltsDivisor))
@@ -46,6 +47,7 @@ class OutletAccessory extends BaseAccessory {
 
     let characteristicAmps: any
     if (energyKeys.amps) {
+      service.addOptionalCharacteristic(EnergyCharacteristics.Amperes)
       characteristicAmps = service
         .getCharacteristic(EnergyCharacteristics.Amperes)
         .updateValue(this._getDividedState(dps[energyKeys.amps as string], energyKeys.ampsDivisor))
@@ -54,6 +56,7 @@ class OutletAccessory extends BaseAccessory {
 
     let characteristicWatts: any
     if (energyKeys.watts) {
+      service.addOptionalCharacteristic(EnergyCharacteristics.Watts)
       characteristicWatts = service
         .getCharacteristic(EnergyCharacteristics.Watts)
         .updateValue(this._getDividedState(dps[energyKeys.watts as string], energyKeys.wattsDivisor))

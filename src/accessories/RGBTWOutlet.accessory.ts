@@ -150,6 +150,7 @@ class RGBTWOutletAccessory extends BaseAccessory {
 
     let characteristicVolts: any
     if (energyKeys.volts) {
+      outletService.addOptionalCharacteristic(EnergyCharacteristics.Volts)
       characteristicVolts = outletService
         .getCharacteristic(EnergyCharacteristics.Volts)
         .updateValue(this._getDividedState(dps[energyKeys.volts], energyKeys.voltsDivisor))
@@ -158,6 +159,7 @@ class RGBTWOutletAccessory extends BaseAccessory {
 
     let characteristicAmps: any
     if (energyKeys.amps) {
+      outletService.addOptionalCharacteristic(EnergyCharacteristics.Amperes)
       characteristicAmps = outletService
         .getCharacteristic(EnergyCharacteristics.Amperes)
         .updateValue(this._getDividedState(dps[energyKeys.amps], energyKeys.ampsDivisor))
@@ -166,6 +168,7 @@ class RGBTWOutletAccessory extends BaseAccessory {
 
     let characteristicWatts: any
     if (energyKeys.watts) {
+      outletService.addOptionalCharacteristic(EnergyCharacteristics.Watts)
       characteristicWatts = outletService
         .getCharacteristic(EnergyCharacteristics.Watts)
         .updateValue(this._getDividedState(dps[energyKeys.watts], energyKeys.wattsDivisor))

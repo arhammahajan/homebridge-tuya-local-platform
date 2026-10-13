@@ -219,6 +219,9 @@ function createMockHAPService(type: string, displayName?: string, subtype?: stri
     setCharacteristic: vi.fn(function (this: any, _charType: any, _value: any) {
       return this
     }),
+    addOptionalCharacteristic: vi.fn(function (this: any, _charType: any) {
+      return this
+    }),
     removeCharacteristic: vi.fn(),
   }
 
