@@ -24,7 +24,19 @@ class AirPurifierAccessory extends BaseAccessory {
     super(...props)
     const { Characteristic } = this.hap
 
-    if (this.device.context.noRotationSpeed) {
+    const speedValues = this._getSpeedValues()
+
+    if (speedValues.length > 0) {
+      // Explicit list of the device's fan-speed values in ascending order.
+      // Values keep their declared type, so a string enum such as
+      // ['1', '2', ...] is written back to the device as strings.
+      this._rotationSteps = speedValues.map((_, index) => index)
+      this._rotationStops = {}
+      for (let i = 1; i <= 100; i++) {
+        const index = Math.min(speedValues.length - 1, Math.floor((speedValues.length * (i - 1)) / 100))
+        this._rotationStops[i] = speedValues[index]
+      }
+    } else if (this.device.context.noRotationSpeed) {
       let fanSpeedSteps =
         this.device.context.fanSpeedSteps &&
         isFinite(this.device.context.fanSpeedSteps) &&
@@ -61,6 +73,16 @@ class AirPurifierAccessory extends BaseAccessory {
       for (let i = 0; i < 100; i++) {
         const _rotationStep = Math.floor((fanSpeedSteps * i) / 100)
         this._rotationStops[i + 1] = _fanSpeedLabels[_rotationStep]
+      }
+    } else {
+      // Nothing configured: assume the device already reports its fan speed on
+      // the same 0-100 scale HomeKit uses and pass the value through unchanged.
+      // Previously this branch left the mapping undefined and the first
+      // rotation-speed read threw on Object.keys(undefined).
+      this._rotationSteps = [...Array(101).keys()]
+      this._rotationStops = {}
+      for (let i = 0; i <= 100; i++) {
+        this._rotationStops[i] = i
       }
     }
 
@@ -424,28 +446,45 @@ class AirPurifierAccessory extends BaseAccessory {
     callback()
   }
 
-  getKeyByValue(object: Record<string, any>, value: any): string | undefined {
-    return Object.keys(object).find((key) => object[key] === value)
+  _getSpeedValues(): (string | number)[] {
+    const raw: unknown = this.device.context.speedValues
+    if (!Array.isArray(raw)) {
+      return []
+    }
+    return raw.filter(
+      (value): value is string | number =>
+        (typeof value === 'string' || typeof value === 'number') && String(value).trim() !== '',
+    )
   }
 
-  convertRotationSpeedFromHomeKitToTuya(value: number): string | number {
-    this.log.debug('convertRotationSpeedFromHomeKitToTuya: %s: %s', value, this._rotationStops[parseInt(String(value))])
-    return this._rotationStops[parseInt(String(value))]
+  getKeyByValue(object: Record<string, any>, value: any): string | undefined {
+    // Compare as strings so a numeric mapping and a string datapoint (or the
+    // reverse) still resolve. Tuya devices are inconsistent about this.
+    return Object.keys(object).find((key) => String(object[key]) === String(value))
+  }
+
+  convertRotationSpeedFromHomeKitToTuya(value: string | number): string | number {
+    const index = parseInt(String(value))
+    const mapped = this._rotationStops[index > 0 ? index : 1]
+    if (mapped === undefined) {
+      this.log.warn('No rotation speed configured for HomeKit value %s', value)
+      return value
+    }
+    this.log.debug('convertRotationSpeedFromHomeKitToTuya: %s: %s', value, mapped)
+    return mapped
   }
 
   convertRotationSpeedFromTuyaToHomeKit(value: DPSValue): number {
-    this.log.debug(
-      'convertRotationSpeedFromTuyaToHomeKit: %s: %s',
-      value,
-      this.getKeyByValue(this._rotationStops as Record<string, any>, value),
+    // Index 0 mirrors the lowest speed in the forward direction, so it is
+    // skipped here; otherwise the lowest speed would report back as 0 (off).
+    const matched = Object.keys(this._rotationStops).find(
+      (key) => key !== '0' && String((this._rotationStops as Record<string, string | number>)[key]) === String(value),
     )
-    const speed: string | undefined = this.device.context.fanSpeedSteps
-      ? '' + this.getKeyByValue(this._rotationStops as Record<string, any>, value)
-      : this.getKeyByValue(this._rotationStops as Record<string, any>, value)
-    if (speed === undefined) {
+    this.log.debug('convertRotationSpeedFromTuyaToHomeKit: %s: %s', value, matched)
+    if (matched === undefined) {
       return 0
     }
-    return parseInt(String(speed)) || 0
+    return parseInt(matched) || 0
   }
 }
 

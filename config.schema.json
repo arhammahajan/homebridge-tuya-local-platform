@@ -399,6 +399,16 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['Fan', 'FanLight'].includes(model.devices[arrayIndices].type);"
               }
             },
+            "speedValues": {
+              "type": "array",
+              "description": "Fan speed values in ascending order, for devices whose speed datapoint is a fixed enum (for example [\"1\", \"2\", \"3\"]). Values are written back with their declared type, so use strings for string enums.",
+              "items": {
+                "type": ["string", "number"]
+              },
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirPurifier'].includes(model.devices[arrayIndices].type);"
+              }
+            },
             "fanDefaultSpeed": {
               "type": "integer",
               "placeholder": "1",

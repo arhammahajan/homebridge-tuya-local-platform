@@ -36,6 +36,11 @@ export function createMockCharacteristic() {
     RotationSpeed: 'rotation-speed',
     SwingMode: { UUID: 'swing-uuid' },
     WaterLevel: 'water-level',
+    CurrentAirPurifierState: { PURIFYING_AIR: 2, INACTIVE: 0 },
+    TargetAirPurifierState: { MANUAL: 0, AUTO: 1 },
+    LockPhysicalControls: { CONTROL_LOCK_ENABLED: 1, CONTROL_LOCK_DISABLED: 0 },
+    AirQuality: { UNKNOWN: 0, EXCELLENT: 1, GOOD: 2, FAIR: 3, INFERIOR: 4, POOR: 5 },
+    PM2_5Density: 'pm25-density',
   }
 }
 
@@ -56,6 +61,8 @@ export function createMockService() {
     Outlet: { UUID: 'outlet-uuid' },
     Lightbulb: { UUID: 'lightbulb-uuid' },
     Switch: { UUID: 'switch-uuid' },
+    AirPurifier: { UUID: 'air-purifier-uuid' },
+    AirQualitySensor: { UUID: 'air-quality-sensor-uuid' },
   }
 }
 

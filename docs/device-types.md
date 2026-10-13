@@ -603,6 +603,11 @@ Air purifiers with fan speed control. Supports manufacturers like Breville, Pros
   /* Number of fan speed steps (only when noRotationSpeed is true) */
   fanSpeedSteps: 3,
 
+  /* Fan speed values in ascending order, for devices whose speed datapoint is
+     a fixed enum. Values keep their type, so a string enum such as
+     ['1', '2', '3'] is written back to the device as strings. */
+  speedValues: ['1', '2', '3'],
+
   /* Display air quality sensor in HomeKit */
   showAirQuality: true,
 
