@@ -19,6 +19,8 @@ class AirPurifierAccessory extends BaseAccessory {
   _hkRotationSpeed?: number
   airQualityLevels!: [number, number][]
   cmdAuto!: string
+  dpAnion!: string | false
+  dpUv!: string | false
 
   constructor(...props: any[]) {
     super(...props)
@@ -99,6 +101,9 @@ class AirPurifierAccessory extends BaseAccessory {
       if (/^a[a-z]+$/i.test(this.device.context.cmdAuto)) this.cmdAuto = ('' + this.device.context.cmdAuto).trim()
       else throw new Error("The cmdAuto doesn't appear to be valid: " + this.device.context.cmdAuto)
     }
+
+    this.dpAnion = this._getCustomDP(this.device.context.dpAnion)
+    this.dpUv = this._getCustomDP(this.device.context.dpUv)
   }
 
   _registerPlatformAccessory(): void {
@@ -107,7 +112,28 @@ class AirPurifierAccessory extends BaseAccessory {
     if (this.device.context.showAirQuality) {
       this._addAirQualityService()
     }
+    // Secondary functions with no HomeKit equivalent of their own are exposed
+    // as plain switches, opt-in via their datapoint id.
+    this._syncSwitchService('anion', 'Anion', this._getCustomDP(this.device.context.dpAnion))
+    this._syncSwitchService('uv', 'UV', this._getCustomDP(this.device.context.dpUv))
     super._registerPlatformAccessory()
+  }
+
+  _syncSwitchService(subtype: string, label: string, dp: string | false): void {
+    const { Service } = this.hap
+    const existing = this.accessory.getServiceById(Service.Switch, subtype)
+
+    if (!dp) {
+      if (existing) {
+        this.log.info('Removing', existing.displayName)
+        this.accessory.removeService(existing)
+      }
+      return
+    }
+
+    const name = `${this.device.context.name} ${label}`
+    const service = existing || this.accessory.addService(Service.Switch, name, subtype)
+    this._checkServiceName(service, name)
   }
 
   _addAirQualityService(): void {
@@ -186,6 +212,29 @@ class AirPurifierAccessory extends BaseAccessory {
         .on('get', this.getPM25.bind(this))
     }
 
+    // A restored (cached) accessory never runs _registerPlatformAccessory, so
+    // make sure the auxiliary switches exist here too (as SwitchAccessory does).
+    this._syncSwitchService('anion', 'Anion', this._getCustomDP(this.device.context.dpAnion))
+    this._syncSwitchService('uv', 'UV', this._getCustomDP(this.device.context.dpUv))
+
+    const anionService = this.accessory.getServiceById(Service.Switch, 'anion')
+    if (anionService && this.dpAnion) {
+      anionService
+        .getCharacteristic(Characteristic.On)
+        .updateValue(dps[this.dpAnion])
+        .on('get', this.getState.bind(this, this.dpAnion))
+        .on('set', this.setState.bind(this, this.dpAnion))
+    }
+
+    const uvService = this.accessory.getServiceById(Service.Switch, 'uv')
+    if (uvService && this.dpUv) {
+      uvService
+        .getCharacteristic(Characteristic.On)
+        .updateValue(dps[this.dpUv])
+        .on('get', this.getState.bind(this, this.dpUv))
+        .on('set', this.setState.bind(this, this.dpUv))
+    }
+
     this.device.on('change', (changes: DPSState, state: DPSState) => {
       this.log.debug('Changes: %o, State: %o', changes, state)
 
@@ -246,6 +295,20 @@ class AirPurifierAccessory extends BaseAccessory {
         }
         if (!changes.hasOwnProperty(DP_AIR_QUALITY)) {
           characteristicAirQuality.updateValue(this._getAirQuality(state))
+        }
+      }
+
+      if (anionService && this.dpAnion && changes.hasOwnProperty(this.dpAnion)) {
+        const characteristicAnion = anionService.getCharacteristic(Characteristic.On)
+        if (characteristicAnion.value !== changes[this.dpAnion]) {
+          characteristicAnion.updateValue(changes[this.dpAnion])
+        }
+      }
+
+      if (uvService && this.dpUv && changes.hasOwnProperty(this.dpUv)) {
+        const characteristicUv = uvService.getCharacteristic(Characteristic.On)
+        if (characteristicUv.value !== changes[this.dpUv]) {
+          characteristicUv.updateValue(changes[this.dpUv])
         }
       }
     })

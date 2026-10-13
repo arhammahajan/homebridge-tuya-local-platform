@@ -109,4 +109,76 @@ describe('AirPurifierAccessory', () => {
       expect(purifier.convertRotationSpeedFromHomeKitToTuya(100)).toBe('2')
     })
   })
+
+  describe('auxiliary switches (anion / uv)', () => {
+    it('adds Anion and UV switch services when configured', () => {
+      const { purifier, accessory, Service } = createAirPurifier({ dpAnion: '6', dpUv: '9' })
+
+      purifier._registerPlatformAccessory()
+
+      expect(accessory.getServiceById(Service.Switch, 'anion')).toBeDefined()
+      expect(accessory.getServiceById(Service.Switch, 'uv')).toBeDefined()
+    })
+
+    it('does not add them when not configured', () => {
+      const { purifier, accessory, Service } = createAirPurifier()
+
+      purifier._registerPlatformAccessory()
+
+      expect(accessory.getServiceById(Service.Switch, 'anion')).toBeUndefined()
+      expect(accessory.getServiceById(Service.Switch, 'uv')).toBeUndefined()
+    })
+
+    it('wires the On characteristic to the configured datapoint', () => {
+      const { purifier, accessory, Service, Characteristic } = createAirPurifier({ dpAnion: '6', dpUv: '9' })
+
+      purifier._registerPlatformAccessory()
+      purifier._registerCharacteristics({ '1': true, '4': '1', '6': true, '9': false })
+
+      expect(accessory.getServiceById(Service.Switch, 'anion').getCharacteristic(Characteristic.On).value).toBe(true)
+      expect(accessory.getServiceById(Service.Switch, 'uv').getCharacteristic(Characteristic.On).value).toBe(false)
+    })
+
+    it('updates the switch when its datapoint changes', () => {
+      const { purifier, device, accessory, Service, Characteristic } = createAirPurifier({ dpAnion: '6' })
+
+      purifier._registerPlatformAccessory()
+      purifier._registerCharacteristics({ '1': true, '6': true })
+
+      const char = accessory.getServiceById(Service.Switch, 'anion').getCharacteristic(Characteristic.On)
+      const updateSpy = vi.spyOn(char, 'updateValue')
+
+      device.state = { '1': true, '6': false }
+      device.emit('change', { '6': false })
+
+      expect(updateSpy).toHaveBeenCalledWith(false)
+    })
+
+    it('adds the switches for a restored (cached) accessory', () => {
+      const { purifier, accessory, Service } = createAirPurifier({ dpAnion: '6', dpUv: '9' })
+
+      // A cached accessory is constructed with isNew === false, so
+      // _registerPlatformAccessory never runs for it — but it already has its
+      // primary service persisted.
+      accessory.addService(Service.AirPurifier, 'Test Purifier')
+      expect(accessory.getServiceById(Service.Switch, 'anion')).toBeUndefined()
+
+      purifier._registerCharacteristics({ '1': true, '6': true, '9': true })
+
+      expect(accessory.getServiceById(Service.Switch, 'anion')).toBeDefined()
+      expect(accessory.getServiceById(Service.Switch, 'uv')).toBeDefined()
+    })
+
+    it('removes the switch when its datapoint is no longer configured', () => {
+      const { purifier, accessory, Service } = createAirPurifier({ dpAnion: '6' })
+
+      purifier._registerPlatformAccessory()
+      expect(accessory.getServiceById(Service.Switch, 'anion')).toBeDefined()
+
+      delete purifier.device.context.dpAnion
+      purifier._registerPlatformAccessory()
+
+      expect(accessory.getServiceById(Service.Switch, 'anion')).toBeUndefined()
+    })
+  })
 })

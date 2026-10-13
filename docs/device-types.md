@@ -608,6 +608,11 @@ Air purifiers with fan speed control. Supports manufacturers like Breville, Pros
      ['1', '2', '3'] is written back to the device as strings. */
   speedValues: ['1', '2', '3'],
 
+  /* Datapoint ids for secondary functions with no HomeKit equivalent. Each one
+     exposes an extra switch in HomeKit. Omit to leave them out. */
+  dpAnion: '6',
+  dpUv: '9',
+
   /* Display air quality sensor in HomeKit */
   showAirQuality: true,
 

@@ -409,6 +409,22 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirPurifier'].includes(model.devices[arrayIndices].type);"
               }
             },
+            "dpAnion": {
+              "type": "string",
+              "placeholder": "6",
+              "description": "Datapoint id of the anion/ionizer function. Exposes an extra switch when set.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirPurifier'].includes(model.devices[arrayIndices].type);"
+              }
+            },
+            "dpUv": {
+              "type": "string",
+              "placeholder": "9",
+              "description": "Datapoint id of the UV function. Exposes an extra switch when set.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirPurifier'].includes(model.devices[arrayIndices].type);"
+              }
+            },
             "fanDefaultSpeed": {
               "type": "integer",
               "placeholder": "1",
