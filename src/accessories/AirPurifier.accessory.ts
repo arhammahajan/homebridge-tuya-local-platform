@@ -8,6 +8,8 @@ const DP_FAN_SPEED = '4'
 const DP_LOCK_PHYSICAL_CONTROLS = '7'
 const DP_AIR_QUALITY = '22'
 const STATE_OTHER = 9
+const SLEEP_MODE = 'Sleep'
+const MANUAL_MODE = 'Manual'
 
 class AirPurifierAccessory extends BaseAccessory {
   static getCategory(Categories: any): number {
@@ -21,6 +23,7 @@ class AirPurifierAccessory extends BaseAccessory {
   cmdAuto!: string
   dpAnion!: string | false
   dpUv!: string | false
+  sleepSwitch!: boolean
 
   constructor(...props: any[]) {
     super(...props)
@@ -104,6 +107,7 @@ class AirPurifierAccessory extends BaseAccessory {
 
     this.dpAnion = this._getCustomDP(this.device.context.dpAnion)
     this.dpUv = this._getCustomDP(this.device.context.dpUv)
+    this.sleepSwitch = this._coerceBoolean(this.device.context.sleepSwitch, false)
   }
 
   _registerPlatformAccessory(): void {
@@ -116,6 +120,14 @@ class AirPurifierAccessory extends BaseAccessory {
     // as plain switches, opt-in via their datapoint id.
     this._syncSwitchService('anion', 'Anion', this._getCustomDP(this.device.context.dpAnion))
     this._syncSwitchService('uv', 'UV', this._getCustomDP(this.device.context.dpUv))
+    // Sleep is a value of the mode datapoint, not a datapoint of its own, so it
+    // is a plain on/off switch rather than a fourth option in HomeKit's mode
+    // selector (which only defines Manual and Auto).
+    this._syncSwitchService(
+      'sleep',
+      'Sleep',
+      this._coerceBoolean(this.device.context.sleepSwitch, false) ? DP_MODE : false,
+    )
     super._registerPlatformAccessory()
   }
 
@@ -216,6 +228,7 @@ class AirPurifierAccessory extends BaseAccessory {
     // make sure the auxiliary switches exist here too (as SwitchAccessory does).
     this._syncSwitchService('anion', 'Anion', this._getCustomDP(this.device.context.dpAnion))
     this._syncSwitchService('uv', 'UV', this._getCustomDP(this.device.context.dpUv))
+    this._syncSwitchService('sleep', 'Sleep', this.sleepSwitch ? DP_MODE : false)
 
     const anionService = this.accessory.getServiceById(Service.Switch, 'anion')
     if (anionService && this.dpAnion) {
@@ -233,6 +246,15 @@ class AirPurifierAccessory extends BaseAccessory {
         .updateValue(dps[this.dpUv])
         .on('get', this.getState.bind(this, this.dpUv))
         .on('set', this.setState.bind(this, this.dpUv))
+    }
+
+    const sleepService = this.accessory.getServiceById(Service.Switch, 'sleep')
+    if (sleepService && this.sleepSwitch) {
+      sleepService
+        .getCharacteristic(Characteristic.On)
+        .updateValue(this._getSleep(this._getMode(dps)))
+        .on('get', this.getSleep.bind(this))
+        .on('set', this.setSleep.bind(this))
     }
 
     this.device.on('change', (changes: DPSState, state: DPSState) => {
@@ -309,6 +331,14 @@ class AirPurifierAccessory extends BaseAccessory {
         const characteristicUv = uvService.getCharacteristic(Characteristic.On)
         if (characteristicUv.value !== changes[this.dpUv]) {
           characteristicUv.updateValue(changes[this.dpUv])
+        }
+      }
+
+      if (sleepService && this.sleepSwitch && changes.hasOwnProperty(DP_MODE)) {
+        const characteristicSleep = sleepService.getCharacteristic(Characteristic.On)
+        const inSleep = this._getSleep(changes[DP_MODE])
+        if (characteristicSleep.value !== inSleep) {
+          characteristicSleep.updateValue(inSleep)
         }
       }
     })
@@ -507,6 +537,21 @@ class AirPurifierAccessory extends BaseAccessory {
         this.log.warn('Unhandled setTargetAirPurifierState value: %s', value)
     }
     callback()
+  }
+
+  getSleep(callback: HomebridgeCallback): void {
+    this.getState([DP_MODE, DP_FAN_SPEED], (err: Error | null, dps: DPSState) => {
+      if (err) return callback(err)
+      callback(null, this._getSleep(this._getMode(dps)))
+    })
+  }
+
+  _getSleep(mode: DPSValue): boolean {
+    return String(mode).toLowerCase() === 'sleep'
+  }
+
+  setSleep(value: DPSValue, callback: HomebridgeCallback): void {
+    return this.setState(DP_MODE, value ? SLEEP_MODE : MANUAL_MODE, callback)
   }
 
   _getSpeedValues(): (string | number)[] {

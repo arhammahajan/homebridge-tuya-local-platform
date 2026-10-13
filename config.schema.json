@@ -425,6 +425,13 @@
                 "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirPurifier'].includes(model.devices[arrayIndices].type);"
               }
             },
+            "sleepSwitch": {
+              "type": "boolean",
+              "description": "Expose the sleep mode as an extra switch. HomeKit's air purifier selector only defines Manual and Auto, so sleep cannot be a fourth option there.",
+              "condition": {
+                "functionBody": "return model.devices && model.devices[arrayIndices] && ['AirPurifier'].includes(model.devices[arrayIndices].type);"
+              }
+            },
             "fanDefaultSpeed": {
               "type": "integer",
               "placeholder": "1",

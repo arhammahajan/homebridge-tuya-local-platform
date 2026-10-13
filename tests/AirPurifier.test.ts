@@ -181,4 +181,79 @@ describe('AirPurifierAccessory', () => {
       expect(accessory.getServiceById(Service.Switch, 'anion')).toBeUndefined()
     })
   })
+
+  describe('sleep switch', () => {
+    it('adds a Sleep switch when enabled', () => {
+      const { purifier, accessory, Service } = createAirPurifier({ sleepSwitch: true })
+
+      purifier._registerPlatformAccessory()
+
+      expect(accessory.getServiceById(Service.Switch, 'sleep')).toBeDefined()
+    })
+
+    it('does not add it when disabled', () => {
+      const { purifier, accessory, Service } = createAirPurifier()
+
+      purifier._registerPlatformAccessory()
+
+      expect(accessory.getServiceById(Service.Switch, 'sleep')).toBeUndefined()
+    })
+
+    it('is on when the device is in sleep mode', () => {
+      const { purifier, accessory, Service, Characteristic } = createAirPurifier({ sleepSwitch: true })
+
+      purifier._registerPlatformAccessory()
+      purifier._registerCharacteristics({ '1': true, '3': 'Sleep', '4': '1' })
+
+      expect(accessory.getServiceById(Service.Switch, 'sleep').getCharacteristic(Characteristic.On).value).toBe(true)
+    })
+
+    it('is off when the mode is not sleep', () => {
+      const { purifier, accessory, Service, Characteristic } = createAirPurifier({ sleepSwitch: true })
+
+      purifier._registerPlatformAccessory()
+      purifier._registerCharacteristics({ '1': true, '3': 'Auto', '4': '1' })
+
+      expect(accessory.getServiceById(Service.Switch, 'sleep').getCharacteristic(Characteristic.On).value).toBe(false)
+    })
+
+    it('switching on writes the sleep mode value', () => {
+      const { purifier, device } = createAirPurifier({ sleepSwitch: true })
+
+      device.connected = true
+      purifier._registerPlatformAccessory()
+      purifier._registerCharacteristics({ '1': true, '3': 'Manual', '4': '1' })
+
+      purifier.setSleep(true, vi.fn())
+
+      expect(device.update).toHaveBeenCalledWith({ '3': 'Sleep' })
+    })
+
+    it('switching off returns to manual', () => {
+      const { purifier, device } = createAirPurifier({ sleepSwitch: true })
+
+      device.connected = true
+      purifier._registerPlatformAccessory()
+      purifier._registerCharacteristics({ '1': true, '3': 'Sleep', '4': '1' })
+
+      purifier.setSleep(false, vi.fn())
+
+      expect(device.update).toHaveBeenCalledWith({ '3': 'Manual' })
+    })
+
+    it('tracks sleep changes reported by the device', () => {
+      const { purifier, device, accessory, Service, Characteristic } = createAirPurifier({ sleepSwitch: true })
+
+      purifier._registerPlatformAccessory()
+      purifier._registerCharacteristics({ '1': true, '3': 'Manual', '4': '1' })
+
+      const char = accessory.getServiceById(Service.Switch, 'sleep').getCharacteristic(Characteristic.On)
+      const updateSpy = vi.spyOn(char, 'updateValue')
+
+      device.state = { '1': true, '3': 'Sleep', '4': '1' }
+      device.emit('change', { '3': 'Sleep' })
+
+      expect(updateSpy).toHaveBeenCalledWith(true)
+    })
+  })
 })

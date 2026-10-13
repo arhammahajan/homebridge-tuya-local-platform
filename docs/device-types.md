@@ -613,6 +613,10 @@ Air purifiers with fan speed control. Supports manufacturers like Breville, Pros
   dpAnion: '6',
   dpUv: '9',
 
+  /* Expose the sleep mode as an extra switch. HomeKit's air purifier selector
+     only defines Manual and Auto, so sleep cannot be a fourth option there. */
+  sleepSwitch: true,
+
   /* Display air quality sensor in HomeKit */
   showAirQuality: true,
 
